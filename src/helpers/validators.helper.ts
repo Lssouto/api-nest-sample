@@ -5,13 +5,15 @@ export class EntityValidator {
     validators: { [key: string]: Validator[] },
   ): string[] {
     return paramsOfTheEntity
-      .map((param) => {
-        return validators[param].reduce<string>((status, validator) => {
-          const isValid = validator.validate(scope[param]);
-          return isValid == null ? status : isValid;
-        }, null);
-      })
+      .map((param) => this.isFieldValid(scope[param], validators[param]))
       .filter((validatorResponse) => validatorResponse !== null);
+  }
+
+  isFieldValid(field, validators: Validator[]): null | string {
+    return validators.reduce<string>((status, validator) => {
+      const isValid = validator.validate(field);
+      return isValid == null ? status : isValid;
+    }, null);
   }
 }
 
@@ -46,5 +48,22 @@ export class GreaterThanValidator extends Validator {
     return value == null || value == undefined || value <= this.min
       ? this.message
       : null;
+  }
+}
+
+export class NumberValidator extends Validator {
+  constructor(message) {
+    super(message);
+  }
+
+  validate(value): string | null {
+    try {
+      if (typeof value == 'string') {
+        value = parseInt(value);
+      }
+      return typeof value != 'number' ? this.message : null;
+    } catch (e) {
+      return this.message;
+    }
   }
 }

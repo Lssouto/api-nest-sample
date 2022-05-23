@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DbService {
-  public queryEnumMocker = {};
+  public queryEnumMocker = {
+    users: [],
+  };
 
   public async getPool(): Promise<DbService> {
     return new Promise((res) => {
@@ -36,6 +38,12 @@ export class DbService {
         default:
           res(null);
       }
+    });
+  }
+
+  public async closeConnection() {
+    return new Promise((res) => {
+      res(this);
     });
   }
 }

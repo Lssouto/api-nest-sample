@@ -9,14 +9,15 @@ import {
 } from '@nestjs/common';
 import { ApiResponse, ApiInternalServerErrorResponse } from '@nestjs/swagger';
 import { Response } from 'express';
-import { CustomError } from 'src/helpers/error.helper';
 import {
   ResponseDTO,
   ResponseErrorDTO,
 } from 'src/services/response-factory/dto/response-factory.dto';
 import { ResponseFactoryService } from 'src/services/response-factory/response-factory.service';
-import { UserEntity, UserDTO } from '../entity/user.entity';
-import { UsersService } from '../services/users.service';
+import { UserDTO } from '../entity/user.entity';
+import { AddUserExecutorService } from '../services/add-user-executor/add-user-executor.service';
+import { GetUserExecutorService } from '../services/get-user-executor/get-user-executor.service';
+import { GetUsersExecutorService } from '../services/get-users-executor/get-users-executor.service';
 
 @Controller('users')
 export class UsersController {
@@ -24,11 +25,25 @@ export class UsersController {
    * O endpoint mais simples possível
    */
   @Get()
-  async getAllUsers() {
+  @ApiResponse({
+    type: ResponseDTO,
+  })
+  @ApiInternalServerErrorResponse({
+    type: ResponseErrorDTO,
+  })
+  async getAllUsers(@Res() res: Response) {
     try {
-      return await this._userService.getUsers();
+      return res
+        .status(200)
+        .send(
+          this._responseFactory.createResponse(
+            'Ok',
+            await this._getUsersExecutor.execute(),
+          ),
+        );
     } catch (e) {
-      return e;
+      const error = this._responseFactory.createResponseError(e);
+      res.status(error.status).send(error.response);
     }
   }
 
@@ -41,19 +56,14 @@ export class UsersController {
   })
   async getUserById(@Param('id') id: number, @Res() res: Response) {
     try {
-      const user = await this._userService.getUser(id);
-      if (user) {
-        res
-          .status(HttpStatus.OK)
-          .send(this._responseFactory.createResponse('OK', user));
-        return;
-      }
-
-      throw new CustomError({
-        from: 'UserController',
-        status: HttpStatus.NOT_FOUND,
-        error: 'User not found',
-      });
+      return res
+        .status(200)
+        .send(
+          this._responseFactory.createResponse(
+            'Ok',
+            await this._getUserExecutor.execute(id),
+          ),
+        );
     } catch (e) {
       const error = this._responseFactory.createResponseError(e);
       res.status(error.status).send(error.response);
@@ -69,8 +79,8 @@ export class UsersController {
   })
   async addUser(@Res() res: Response, @Body() body: UserDTO) {
     try {
-      const userEntity: UserEntity = new UserEntity(body, true);
-      await this._userService.addUser(userEntity);
+      await this._addUserExecutor.execute(body);
+
       res
         .status(HttpStatus.CREATED)
         .send(
@@ -86,7 +96,9 @@ export class UsersController {
   }
 
   constructor(
-    private _userService: UsersService,
     private _responseFactory: ResponseFactoryService,
+    private _addUserExecutor: AddUserExecutorService,
+    private _getUserExecutor: GetUserExecutorService,
+    private _getUsersExecutor: GetUsersExecutorService,
   ) {}
 }
